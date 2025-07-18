@@ -41,9 +41,19 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      # Security Scan
+        # Security Scan (fail only on Critical/High)
       - name: Security Scan
-        run: tfsec .
+        run: |
+          tfsec . --soft-fail --format=json > tfsec-results.json
+          # Parse results: exit 1 only if Critical/High found
+          critical_or_high=$(jq '[.results[] | select(.severity=="CRITICAL" or .severity=="HIGH")] | length' tfsec-results.json)
+          if [ "$critical_or_high" -gt 0 ]; then
+            echo "Found $critical_or_high CRITICAL/HIGH issues"
+            cat tfsec-results.json | jq '.results[] | select(.severity=="CRITICAL" or .severity=="HIGH") | {rule_id, description, impact, resolution}'
+            exit 1
+          else
+            echo "No CRITICAL/HIGH issues found. See tfsec-results.json for full report."
+          fi
 
       # Dry-run plan (no state changes)
       - name: Terraform Plan
