@@ -1,0 +1,51 @@
+name: Terraform CI
+
+on:
+    pull_request:
+        branches:
+            - main
+    push:
+        branches:
+            - main
+
+jobs:
+    terraform:
+        runs-on: ubuntu-latest
+        env:
+            TF_IN-AUTOMATION: true
+        steps:
+            #Checkout the repository
+            - name: Checkout
+                uses: actions/checkout@v4
+
+    # Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      # Install tfsec for security scanning
+      - name: Install tfsec
+        run: |
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+          sudo mv tfsec /usr/local/bin/
+
+      # Initialize Terraform (using a dummy backend for validation)
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      # Check formatting
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
+      # Validate configuration
+      - name: Terraform Validate
+        run: terraform validate
+
+      # Security scan with tfsec
+      - name: Security Scan
+        run: tfsec .
+
+      # Plan (Dry run - does not apply)
+      - name: Terraform Plan
+        run: terraform plan -lock=false -input=false
