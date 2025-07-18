@@ -21,7 +21,7 @@ output "public_subnets" {
 }
 
 module "iam_ec2_admin" {
-  source = "../../modules/iam"
+  source      = "../../modules/iam"
   name_prefix = "dev-ec2-admin"
 
   assume_role_policy = jsonencode({
@@ -41,8 +41,8 @@ module "iam_ec2_admin" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
-        Action = "ec2:*",
+        Effect   = "Allow",
+        Action   = "ec2:*",
         Resource = "*"
       }
     ]
@@ -50,11 +50,11 @@ module "iam_ec2_admin" {
 }
 
 module "cloudtrail" {
-  source = "../../modules/cloudtrail"
-  trail_name = "dev-org-trail"
-  cloudtrail_bucket_name = "dev-cloudtrail-logs-${random_id.suffix.hex}"
-  enable_cloudwatch_logs = true
-  force_destroy = true
+  source                    = "../../modules/cloudtrail"
+  trail_name                = "dev-org-trail"
+  cloudtrail_bucket_name    = "dev-cloudtrail-logs-${random_id.suffix.hex}"
+  enable_cloudwatch_logs    = true
+  force_destroy             = true
   cloudwatch_retention_days = 180
   cloud_watch_logs_role_arn = "arn:aws:iam::123456789012:role/CloudTrailCWLogsRole"
 }
