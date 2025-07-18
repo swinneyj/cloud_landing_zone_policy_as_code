@@ -1,1 +1,0 @@
-{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"cloudtrail","Source":"../../modules/cloudtrail","Dir":"../../modules/cloudtrail"},{"Key":"iam_ec2_admin","Source":"../../modules/iam","Dir":"../../modules/iam"},{"Key":"network","Source":"../../modules/network","Dir":"../../modules/network"}]}
