@@ -31,8 +31,8 @@ data "aws_iam_policy_document" "kms_policy" {
   }
 
   statement {
-    sid     = "AllowCloudTrailService"
-    effect  = "Allow"
+    sid    = "AllowCloudTrailService"
+    effect = "Allow"
     actions = [
       "kms:Encrypt",
       "kms:Decrypt",
@@ -47,10 +47,10 @@ data "aws_iam_policy_document" "kms_policy" {
     resources = ["*"]
   }
 
-    # Allow CloudWatch Logs to use the key for log group encryption
+  # Allow CloudWatch Logs to use the key for log group encryption
   statement {
-    sid     = "AllowCloudWatchLogsService"
-    effect  = "Allow"
+    sid    = "AllowCloudWatchLogsService"
+    effect = "Allow"
     actions = [
       "kms:Encrypt",
       "kms:Decrypt",
@@ -67,8 +67,8 @@ data "aws_iam_policy_document" "kms_policy" {
 
   #Allow a security/auditing role to decrypt
   statement {
-    sid     = "AllowSecurityTeamDecrypt"
-    effect  = "Allow"
+    sid    = "AllowSecurityTeamDecrypt"
+    effect = "Allow"
     actions = [
       "kms:Decrypt",
       "kms:DescribeKey"

@@ -114,7 +114,7 @@ resource "aws_cloudwatch_log_group" "cloudtrail" {
   count             = var.enable_cloudwatch_logs ? 1 : 0
   name              = "/aws/cloudtrail/${var.trail_name}"
   retention_in_days = var.cloudwatch_retention_days
-  kms_key_id = var.kms_key_arn
+  kms_key_id        = var.kms_key_arn
 }
 
 //Provides a cloudtrail resource
