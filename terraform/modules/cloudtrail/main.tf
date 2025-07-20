@@ -42,26 +42,15 @@ resource "aws_s3_bucket" "cloudtrail" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
+//S3 bucket policy for CloudTrail Logs, granting CT necessary permissions to write logs into it
 resource "aws_s3_bucket_policy" "cloudtrail_policy" {
   bucket = aws_s3_bucket.cloudtrail.id
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-      {
-        Sid    = "AWSCloudTrailWrite",
-        Effect = "Allow",
-        Principal = {
-          Service = "cloudtrail.amazonaws.com"
-        },
-        Action   = "s3:PutObject",
-        Resource = "${aws_s3_bucket.cloudtrail.arn}/*",
-        Condition = {
-          StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
-          }
-        }
-      },
       {
         Sid    = "AWSCloudTrailAclCheck",
         Effect = "Allow",
@@ -70,6 +59,20 @@ resource "aws_s3_bucket_policy" "cloudtrail_policy" {
         },
         Action   = "s3:GetBucketAcl",
         Resource = aws_s3_bucket.cloudtrail.arn
+      },
+      {
+        Sid    = "AWSCloudTrailWrite",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        },
+        Action   = "s3:PutObject",
+        Resource = "${aws_s3_bucket.cloudtrail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
       }
     ]
   })
@@ -89,7 +92,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail_encryp
   bucket = aws_s3_bucket.cloudtrail.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      kms_master_key_id = var.kms_key_arn
+      sse_algorithm     = "aws:kms"
     }
   }
 }
@@ -110,6 +114,7 @@ resource "aws_cloudwatch_log_group" "cloudtrail" {
   count             = var.enable_cloudwatch_logs ? 1 : 0
   name              = "/aws/cloudtrail/${var.trail_name}"
   retention_in_days = var.cloudwatch_retention_days
+  kms_key_id = var.kms_key_arn
 }
 
 //Provides a cloudtrail resource
@@ -119,6 +124,7 @@ resource "aws_cloudtrail" "main" {
   include_global_service_events = true
   is_multi_region_trail         = true
   enable_log_file_validation    = true
+  kms_key_id                    = var.kms_key_arn
 
   cloud_watch_logs_group_arn = try("${aws_cloudwatch_log_group.cloudtrail[0].arn}:*", null)
   cloud_watch_logs_role_arn  = try(aws_iam_role.cloudtrail_cw_role[0].arn, null)
@@ -128,6 +134,4 @@ resource "aws_cloudtrail" "main" {
     aws_cloudwatch_log_group.cloudtrail,
     aws_iam_role.cloudtrail_cw_role
   ]
-
 }
-
