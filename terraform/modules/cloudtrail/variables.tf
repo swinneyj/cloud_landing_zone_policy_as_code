@@ -30,3 +30,8 @@ variable "cloud_watch_logs_role_arn" {
   type        = string
   default     = ""
 }
+
+variable "kms_key_arn" {
+  description = "ARN of the KMS key to use for encrypting CloudTrail logs"
+  type        = string
+}
