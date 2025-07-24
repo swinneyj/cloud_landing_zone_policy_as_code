@@ -1,0 +1,21 @@
+name: Delete All Workflow Runs
+
+on:
+  workflow_dispatch: # lets you run it manually from Actions tab
+  schedule:
+    - cron: '0 0 * * *' # runs daily at midnight UTC (optional)
+  push: # optional - runs on every push
+    branches:
+      - main
+
+jobs:
+  delete-all-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete ALL workflow runs (no retention)
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 0   # 0 means delete everything
+          delete_workflow_pattern: "" # blank = all workflows
