@@ -1,12 +1,16 @@
 name: Delete All Workflow Runs
 
 on:
-  workflow_dispatch: # lets you run it manually from Actions tab
+  workflow_dispatch: # manual trigger
   schedule:
-    - cron: '0 0 * * *' # runs daily at midnight UTC (optional)
-  push: # optional - runs on every push
+    - cron: '0 0 * * *' # optional - runs daily
+  push:
     branches:
       - main
+
+permissions:
+  actions: write     # Required to allow deletion of workflow runs
+  contents: read
 
 jobs:
   delete-all-runs:
@@ -17,5 +21,5 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          retain_days: 0   # 0 means delete everything
-          delete_workflow_pattern: "" # blank = all workflows
+          retain_days: 0
+          delete_workflow_pattern: ""
