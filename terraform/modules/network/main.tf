@@ -71,3 +71,16 @@ resource "aws_route_table_association" "name" {
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
+
+resource "aws_default_route_table" "default" {
+  default_route_table_id = aws_vpc.main.default_route_table_id
+
+  tags = {
+    Name = "${var.name_prefix}-default-rtb"
+  }
+}
+
+resource "aws_main_route_table_association" "main" {
+  vpc_id         = aws_vpc.main.id
+  route_table_id = aws_default_route_table.default.id
+}

@@ -1,23 +1,16 @@
-variable "alias_key_name" {
-  description = "Name of the KMS key alias"
-  type        = string
-}
-
 resource "aws_kms_key" "kms_key" {
-  description = "Alias for the KMS Key"
-  //description = "KMS key for alias ${var.alias_key_name}"
+  description             = "KMS key for ${var.alias_key_name}"
   deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
 }
 
 resource "aws_kms_alias" "kms_alias" {
-  name          = "alias/${var.key_alias}"
+  name          = var.alias_key_name
   target_key_id = aws_kms_key.kms_key.id
 }
 
-##Key Policy for the KMS Key
-## Allows the account root to adminster the key
-## Allows Cloudtrail to encrypt/decrypt using the key
-##Grants decryption to a securiyt role
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "kms_policy" {
   statement {
     sid     = "AllowAccountAdmins"
@@ -27,12 +20,12 @@ data "aws_iam_policy_document" "kms_policy" {
       type        = "AWS"
       identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
     }
-    resources = ["*"]
+    resources = [aws_kms_key.kms_key.arn]
   }
 
   statement {
-    sid    = "AllowCloudTrailService"
-    effect = "Allow"
+    sid     = "AllowCloudServices"
+    effect  = "Allow"
     actions = [
       "kms:Encrypt",
       "kms:Decrypt",
@@ -42,42 +35,13 @@ data "aws_iam_policy_document" "kms_policy" {
     ]
     principals {
       type        = "Service"
-      identifiers = ["cloudtrail.amazonaws.com"]
+      identifiers = [
+        "cloudtrail.amazonaws.com",
+        "config.amazonaws.com",
+        "logs.amazonaws.com"
+      ]
     }
-    resources = ["*"]
-  }
-
-  # Allow CloudWatch Logs to use the key for log group encryption
-  statement {
-    sid    = "AllowCloudWatchLogsService"
-    effect = "Allow"
-    actions = [
-      "kms:Encrypt",
-      "kms:Decrypt",
-      "kms:ReEncrypt*",
-      "kms:GenerateDataKey*",
-      "kms:DescribeKey"
-    ]
-    principals {
-      type        = "Service"
-      identifiers = ["logs.${var.region}.amazonaws.com"] # or hardcode us-east-1
-    }
-    resources = ["*"]
-  }
-
-  #Allow a security/auditing role to decrypt
-  statement {
-    sid    = "AllowSecurityTeamDecrypt"
-    effect = "Allow"
-    actions = [
-      "kms:Decrypt",
-      "kms:DescribeKey"
-    ]
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
-    }
-    resources = ["*"]
+    resources = [aws_kms_key.kms_key.arn]
   }
 }
 
@@ -85,5 +49,3 @@ resource "aws_kms_key_policy" "key_policy" {
   key_id = aws_kms_key.kms_key.id
   policy = data.aws_iam_policy_document.kms_policy.json
 }
-
-data "aws_caller_identity" "current" {}

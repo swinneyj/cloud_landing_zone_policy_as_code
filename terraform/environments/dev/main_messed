@@ -92,20 +92,27 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
+//KMS foor CloudTrail Logs
 module "kms_logging" {
-  source         = "../../modules/kms"
-  key_alias      = "dev-cloudtrail-key"
-  alias_key_name = "alias/dev-cloudtrail-key"
-  region         = "us-east-1"
+  source                  = "../../modules/kms"
+  key_alias               = "dev-logging-key"
+  alias_key_name          = "alias/dev-logging-key"
+  region                  = "us-east-1"
+  allowed_services        = ["cloudtrail.amazonaws.com", "logs.us-east-1.amazonaws.com"]
+  security_audit_role_arn = "arn:aws:iam::742329686451:role/SecurityAuditRole"
 }
 
+//KMS for AWS Config (S3 + SNS)
 module "kms_config" {
-  source         = "../../modules/kms"
-  key_alias      = "dev-config-key"
-  alias_key_name = "alias/dev-config-key"
-  region         = "us_east-1"
+  source                  = "../../modules/kms"
+  key_alias               = "dev-config-key"
+  alias_key_name          = "alias/dev-config-key"
+  region                  = "us-east-1"
+  allowed_services        = ["config.amazonaws.com", "sns.amazonaws.com"]
+  security_audit_role_arn = "arn:aws:iam::742329686451:role/SecurityAuditRole"
 }
 
+//AWS Config uses it's own key
 module "aws_config" {
   source             = "../../modules/config"
   region             = "us-east-1"

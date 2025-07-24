@@ -28,25 +28,60 @@ resource "aws_iam_role_policy" "cloudtrail_cw_policy" {
     Statement = [
       {
         Effect   = "Allow",
-        Action   = ["logs:CreateLogStream"],
-        Resource = aws_cloudwatch_log_group.cloudtrail[0].arn
-      },
-      {
-        Effect   = "Allow",
-        Action   = ["logs:PutLogEvents"],
-        Resource = "${aws_cloudwatch_log_group.cloudtrail[0].arn}:log-stream:*"
+        Action   = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = [
+          "${aws_cloudwatch_log_group.cloudtrail[0].arn}:*"
+        ]
       }
     ]
   })
 }
 
 resource "aws_s3_bucket" "cloudtrail" {
-  bucket        = var.cloudtrail_bucket_name
+  bucket        = var.cloudtrail_bucket_name 
   force_destroy = var.force_destroy
 
   tags = {
     Name = var.cloudtrail_bucket_name
   }
+}
+
+//secondary bucket created for logging
+resource "aws_s3_bucket" "cloudtrail_access_logs" {
+  bucket = "${var.cloudtrail_bucket_name}-access-logs"
+  force_destroy = true
+
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = var.kms_key_arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+
+}
+
+//block public access on cloudtrail logging bucket
+
+resource "aws_s3_bucket_public_access_block" "cloudtrail_access_logs_block" {
+  bucket = aws_s3_bucket.cloudtrail_access_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+  
+}
+
+resource "aws_s3_bucket_logging" "cloudtrail_logging" {
+  bucket = aws_s3_bucket.cloudtrail.id
+
+  target_bucket = aws_s3_bucket.cloudtrail_access_logs.id
+  target_prefix = "cloudtrail-access/"  
 }
 
 data "aws_caller_identity" "current" {}
@@ -82,6 +117,24 @@ resource "aws_s3_bucket_policy" "cloudtrail_policy" {
         }
       }
     ]
+  })
+}
+
+//bucket policy for the CloudTrail Logging bucket
+resource "aws_s3_bucket_policy" "cloudtrail_access_logs_policy" {
+  bucket = aws_s3_bucket.cloudtrail_access_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = { Service = "logging.s3.amazonaws.com" },
+      Action = "s3:PutObject",
+      Resource = "${aws_s3_bucket.cloudtrail_access_logs.arn}/cloudtrail-access/*",
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+      }
+    }]
   })
 }
 
@@ -130,6 +183,7 @@ resource "aws_cloudtrail" "main" {
   s3_bucket_name                = aws_s3_bucket.cloudtrail.id
   include_global_service_events = true
   is_multi_region_trail         = true
+  sns_topic_name = aws_sns_topic.notes.name
   enable_log_file_validation    = true
   kms_key_id                    = var.kms_key_arn
 
@@ -139,6 +193,28 @@ resource "aws_cloudtrail" "main" {
   depends_on = [
     aws_s3_bucket.cloudtrail,
     aws_cloudwatch_log_group.cloudtrail,
-    aws_iam_role.cloudtrail_cw_role
+    aws_iam_role.cloudtrail_cw_role,
+    aws_iam_role_policy.cloudtrail_cw_policy
   ]
+}
+
+//Provides an SNS topic policy resource
+resource "aws_sns_topic_policy" "cloudtrail_sns_policy" {
+  arn = aws_sns_topic.notes.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = { Service = "cloudtrail.amazonaws.com" }
+      Action   = "SNS:Publish",
+      Resource = aws_sns_topic.notes.arn,
+    }]
+  })
+}
+
+//Provides an SNS topic resource for CloudTrail notifications
+resource "aws_sns_topic" "notes" {
+  name = "${var.trail_name}-sns-topic"
+  kms_master_key_id = var.kms_key_arn
 }
